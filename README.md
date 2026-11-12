@@ -81,16 +81,17 @@ SRAM cells resolve to bistable values ($0$ or $1$) at power-on based on infinite
 </div>
 
 During factory bench calibration:
-1. The device undergoes $N$ power cycles ($N = 32$). The uninitialized SRAM region is read at the earliest stage of boot.
-2. **Temporal Majority Voting:** A bit $i$ is assigned stable value $1$ if observed as $1$ in $>50\%$ of power boots:
-   $$\text{Vote}(b_i) = \begin{cases} 1 & \sum_{j=1}^N b_i^{(j)} > \frac{N}{2} \\ 0 & \text{otherwise} \end{cases}$$
-3. **Dark-Bit Masking:** Bits with any transition variance ($\sum b_i \notin \{0, N\}$) are classified as "dark" (flickering/noisy) and masked out.
-4. An ephemeral 128-bit secret key $K$ is generated using the hardware True Random Number Generator (TRNG).
-5. The key is encoded into a systematic codeword using $\text{BCH}(255, 131, t=18)$:
-   $$C = \text{BCH\_Encode}(K)$$
-6. Public helper data $H$ is computed via code-offset:
-   $$H = P_{\text{selected}} \oplus C$$
-7. $(H, \text{mask})$ are written to NVS flash; the backend registers $(H, \text{mask}, \text{SHA256}(K))$; $K$ is zeroised from RAM.
+1. The device undergoes `N` power cycles (`N = 32`). The uninitialized SRAM region is read at the earliest stage of boot.
+2. **Temporal Majority Voting:** A bit `i` is assigned stable value `1` if observed as `1` in more than 50% of boots:
+   - If `count(bit_i == 1) > N / 2` &rarr; `stable_bit = 1`, else `0`.
+3. **Dark-Bit Masking:** Bits that ever flipped during calibration (count is neither `0` nor `N`) are classified as "dark" (flickering/noisy) and masked out:
+   - `mask_bit = 1` if `count == 0` or `count == N`, else `0`.
+4. An ephemeral 128-bit secret key `K` is generated using the hardware True Random Number Generator (TRNG).
+5. The key is encoded into a systematic codeword using `BCH(255, 131, t=18)`:
+   - `C = BCH_Encode(K)`
+6. Public helper data `H` is computed via code-offset:
+   - `H = P_selected ⊕ C`
+7. `(H, mask)` are written to NVS flash; the backend registers `(H, mask, SHA256(K))`; `K` is zeroised from RAM.
 
 ### 2. Reconstruction Phase (Field Boot)
 
@@ -99,13 +100,13 @@ During factory bench calibration:
 </div>
 
 On every operational boot in the field:
-1. The SRAM pattern is sampled under ambient physical conditions ($P' = P \oplus e$, where $e$ is a sparse environmental error vector).
-2. The enrolled mask selects valid bit positions: $P'_{\text{selected}}$.
+1. The SRAM pattern is sampled under ambient physical conditions: `P' = P ⊕ e` (where `e` is the sparse noise vector).
+2. The enrolled mask selects valid bit positions: `P'_selected`.
 3. The helper data is applied:
-   $$C' = P'_{\text{selected}} \oplus H = (P_{\text{selected}} \oplus e) \oplus (P_{\text{selected}} \oplus C) = C \oplus e$$
-4. The BCH decoder executes Berlekamp-Massey and corrects up to $t=18$ bit errors:
-   $$\text{BCH\_Decode}(C') \to K$$
-5. If bit errors $e \le 18$, key $K$ is restored identically. If $e > 18$ (e.g. counterfeit chip or severe die damage), decoding fails and flight is inhibited.
+   - `C' = P'_selected ⊕ H = (P ⊕ e) ⊕ (P ⊕ C) = C ⊕ e`
+4. The BCH decoder executes Berlekamp-Massey and corrects up to `t = 18` bit errors:
+   - `BCH_Decode(C') &rarr; K`
+5. If bit errors `e ≤ 18`, key `K` is restored identically. If `e > 18` (e.g. counterfeit chip or severe die damage), decoding fails and flight is inhibited.
 
 ---
 
