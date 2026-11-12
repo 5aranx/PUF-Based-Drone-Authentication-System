@@ -1,0 +1,27 @@
+digraph states {
+  rankdir=LR;
+  graph [fontname="Helvetica", bgcolor="white", pad=0.2, nodesep=0.28, ranksep=0.45];
+  node  [fontname="Helvetica", fontsize=10, shape=box, style="rounded,filled",
+         fillcolor="#E8EEF4", color="#1B3A57", penwidth=1.2, margin="0.14,0.07"];
+  edge  [color="#5A6B7C", penwidth=1.1, arrowsize=0.65, fontsize=9];
+
+  BOOT   [label="BOOT\n(bootloader)", shape=ellipse, fillcolor="#1B3A57", fontcolor="white", fontname="Helvetica-Bold"];
+  PUF    [label="PUF_READ\nnoinit SRAM → buffer"];
+  RECON  [label="RECONSTRUCT\nBCH decode → K"];
+  NET    [label="NET_CONNECT\nWi-Fi + TLS"];
+  AUTH   [label="AUTH\nchallenge / response"];
+  LIVE   [label="LIVE\ntelemetry @ 10 Hz", fillcolor="#E3EFE3"];
+  DENY   [label="DENY\nmotors inhibited", fillcolor="#FBE4E4", color="#B03A3A"];
+  LOCK   [label="LOCKOUT\nNVS counter, 30 s backoff", fillcolor="#FBE4E4", color="#B03A3A"];
+
+  BOOT  -> PUF   [label=" < 5 ms"];
+  PUF   -> RECON [label=" 4 kbit"];
+  RECON -> NET   [label=" decode ok"];
+  RECON -> DENY  [label=" decode fail"];
+  NET   -> AUTH  [label=" link up"];
+  AUTH  -> LIVE  [label=" token"];
+  AUTH  -> LOCK  [label=" 5 fails"];
+  AUTH  -> AUTH  [label=" retry ≤ 3\n(backoff 2^n s)"];
+  LOCK  -> AUTH  [label=" after backoff", style=dashed];
+  LIVE  -> AUTH  [label=" token expiry\n(15 min)", style=dashed];
+}

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PUF Drone Auth — Dashboard</title>
+  <style>
+    /* ── Reset & Base ─────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --border:    #30363d;
+      --accent:    #58a6ff;
+      --ok:        #3fb950;
+      --warn:      #d29922;
+      --danger:    #f85149;
+      --text:      #c9d1d9;
+      --muted:     #8b949e;
+      --font:      'Courier New', Courier, monospace;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 13px;
+    }
+
+    /* ── Layout ───────────────────────────────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+
+    header h1 {
+      font-size: 16px;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+
+    header .subtitle {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .sse-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--ok);
+      display: inline-block;
+      margin-left: auto;
+      box-shadow: 0 0 6px var(--ok);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+
+    @keyframes fadeIn {
+      from { background: rgba(88, 166, 255, 0.15); }
+      to   { background: transparent; }
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 280px 1fr 1fr;
+      gap: 0;
+      height: calc(100vh - 45px);
+      overflow: hidden;
+    }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .panel:last-child { border-right: none; }
+
+    .panel-header {
+      padding: 10px 14px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .panel-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+
+    /* ── Fleet Cards ─────────────────────────────────────────────────────── */
+    .drone-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 8px;
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .drone-card:hover { border-color: var(--accent); }
+
+    .drone-card.selected {
+      border-color: var(--accent);
+      background: #1c2a3a;
+    }
+
+    .drone-card.live   { border-left: 3px solid var(--ok); }
+    .drone-card.auth   { border-left: 3px solid var(--warn); }
+    .drone-card.denied { border-left: 3px solid var(--danger); }
+    .drone-card.offline{ border-left: 3px solid var(--muted); }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .badge {
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .device-id {
+      font-size: 12px;
+      color: var(--accent);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .card-meta {
+      font-size: 10px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .replay-btn {
+      background: transparent;
+      border: 1px solid var(--danger);
+      color: var(--danger);
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-family: var(--font);
+      font-size: 11px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .replay-btn:hover { background: rgba(248, 81, 73, 0.15); }
+
+    .empty {
+      color: var(--muted);
+      text-align: center;
+      margin-top: 20px;
+      font-size: 12px;
+    }
+
+    /* ── Telemetry Panel ──────────────────────────────────────────────────── */
+    .telem-label {
+      font-size: 11px;
+      color: var(--accent);
+      margin: 12px 0 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .telem-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .telem-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+    }
+
+    .telem-item .key {
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 4px;
+    }
+
+    .telem-item .val {
+      font-size: 18px;
+      color: var(--text);
+    }
+
+    #selected-drone-label {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    #attitude-canvas {
+      display: block;
+      margin: 10px auto;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+    }
+
+    /* ── Auth Log ────────────────────────────────────────────────────────── */
+    .log-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .log-table th {
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      color: var(--muted);
+      text-align: left;
+      padding: 6px 8px;
+      font-weight: normal;
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      border-bottom: 1px solid var(--border);
+      z-index: 1;
+    }
+
+    .log-table td {
+      padding: 5px 8px;
+      border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+      vertical-align: top;
+      word-break: break-word;
+    }
+
+    .log-table tr.log-ok   td { color: var(--ok); }
+    .log-table tr.log-bad  td { color: var(--danger); }
+    .log-table tr.log-warn td { color: var(--warn); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>⬡ PUF Drone Auth — Fleet Dashboard</h1>
+    <div class="subtitle">Physically Unclonable Function · HMAC-SHA256 · JWT Session Keys</div>
+  </div>
+  <span class="sse-dot" id="sse-dot" title="SSE live"></span>
+</header>
+
+<div class="grid">
+
+  <!-- ── Fleet Panel ── -->
+  <div class="panel">
+    <div class="panel-header">Fleet Status</div>
+    <div class="panel-body" id="fleet-list">
+      <div class="empty">Loading…</div>
+    </div>
+  </div>
+
+  <!-- ── Telemetry Panel ── -->
+  <div class="panel">
+    <div class="panel-header">
+      Telemetry — <span id="selected-drone-label">select a drone</span>
+    </div>
+    <div class="panel-body">
+      <canvas id="attitude-canvas" width="160" height="160"></canvas>
+
+      <div class="telem-grid">
+        <div class="telem-item">
+          <div class="key">Latitude</div>
+          <div class="val" id="telem-lat">—</div>
+        </div>
+        <div class="telem-item">
+          <div class="key">Longitude</div>
+          <div class="val" id="telem-lon">—</div>
+        </div>
+        <div class="telem-item">
+          <div class="key">Altitude</div>
+          <div class="val" id="telem-alt">—</div>
+        </div>
+        <div class="telem-item">
+          <div class="key">Heading</div>
+          <div class="val" id="telem-heading">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Auth Log Panel ── -->
+  <div class="panel">
+    <div class="panel-header">Auth Log</div>
+    <div class="panel-body" style="padding: 0;">
+      <table class="log-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Device</th>
+            <th>Event</th>
+            <th>Detail</th>
+          </tr>
+        </thead>
+        <tbody id="log-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script src="/static/dashboard.js"></script>
+<script>
+  // Update SSE dot on connection state
+  const dot = document.getElementById('sse-dot');
+  if (typeof es !== 'undefined') {
+    es.addEventListener('open', () => {
+      dot.style.background = 'var(--ok)';
+      dot.style.boxShadow  = '0 0 6px var(--ok)';
+    });
+    es.addEventListener('error', () => {
+      dot.style.background = 'var(--danger)';
+      dot.style.boxShadow  = '0 0 6px var(--danger)';
+    });
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,27 @@
+digraph threat {
+  rankdir=TB;
+  graph [fontname="Helvetica", bgcolor="white", pad=0.25, nodesep=0.30, ranksep=0.30];
+  node  [fontname="Helvetica", fontsize=10, shape=box, style="rounded,filled",
+         fillcolor="#E8EEF4", color="#1B3A57", penwidth=1.2, margin="0.15,0.07"];
+  edge  [color="#5A6B7C", penwidth=1.1, arrowsize=0.65, fontsize=9];
+
+  atk  [label="ATTACKER\nwants to fly a fake drone the GCS trusts", shape=ellipse,
+        fillcolor="#FBE4E4", color="#B03A3A", fontname="Helvetica-Bold"];
+
+  a1   [label="1 · Dump flash,\ncopy firmware + keys"];
+  a2   [label="2 · Capture a valid\nauth exchange, replay it"];
+  a3   [label="3 · Buy the same\nESP32 module, run\nidentical firmware"];
+  a4   [label="4 · Read the SRAM\npattern externally"];
+
+  r1   [label="Flash contains only H + MASK\n→ no key to steal\n→ attack fails", fillcolor="#E3EFE3"];
+  r2   [label="Nonce is single-use\n→ replay rejected", fillcolor="#E3EFE3"];
+  r3   [label="Different die → different PUF\n→ BCH decode fails\n(~50 % inter-chip Hamming distance)", fillcolor="#E3EFE3"];
+  r4   [label="SRAM is internal, no debug\ninterface exposes it;\nreading requires decapping\n→ out of scope, but note it", fillcolor="#FFF1D6"];
+
+  a1 -> r1; a2 -> r2; a3 -> r3; a4 -> r4;
+  atk -> a1; atk -> a2; atk -> a3; atk -> a4;
+
+  res [label="Result: possession of the physical silicon is the credential",
+       shape=ellipse, fillcolor="#1B3A57", fontcolor="white", fontname="Helvetica-Bold"];
+  r1 -> res; r2 -> res; r3 -> res;
+}

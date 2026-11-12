@@ -1,0 +1,41 @@
+digraph enroll {
+  rankdir=TB;
+  graph [fontname="Helvetica", bgcolor="white", pad=0.25, nodesep=0.35, ranksep=0.32];
+  node  [fontname="Helvetica", fontsize=10, shape=box, style="rounded,filled",
+         fillcolor="#E8EEF4", color="#1B3A57", penwidth=1.2, margin="0.16,0.08"];
+  edge  [color="#5A6B7C", penwidth=1.1, arrowsize=0.65];
+
+  start [label="ENROLLMENT  (one time, at provisioning)\nbench / cable, trusted environment",
+         shape=ellipse, fillcolor="#1B3A57", fontcolor="white", fontname="Helvetica-Bold"];
+
+  read  [label="Power-cycle the ESP32 N times (N ≈ 20–50)\nread raw SRAM at the earliest boot stage"];
+
+  mvote [label="Per-bit temporal majority vote\ncount[bit] → 1 if seen as 1 in > 50 % of boots"];
+
+  stable[label="Stability check\nkeep bits that never flipped  →  MASK\ndiscard \"dark\" / noisy bits", fillcolor="#FFF1D6"];
+
+  key   [label="Generate secret key K\n128 bits from hardware TRNG\n(K is never written to flash)", fillcolor="#FFF1D6"];
+
+  enc   [label="BCH encode:  C = BCH(K)\ncode corrects t bit errors", fillcolor="#FFF1D6"];
+
+  helper[label="Helper data:  H = P_selected  ⊕  C\nH is public — it leaks nothing about K", fillcolor="#FFF1D6"];
+
+  store [label="Write H + MASK to NVS flash\nRegister on server:\ndevice_id → MASK, H, hash(K)", shape=cylinder, fillcolor="#E3EFE3", height=0.9];
+
+  wipe  [label="Discard K from RAM\n(zeroise the buffer)"];
+
+  done  [label="ENROLLED\nready for field authentication", shape=ellipse,
+         fillcolor="#1B3A57", fontcolor="white", fontname="Helvetica-Bold"];
+
+  start -> read -> mvote -> stable -> key -> enc -> helper -> store -> wipe -> done;
+
+  note1 [shape=note, style="filled", fillcolor="#FFF8E1", color="#D6C68A",
+         label="Why majority vote?\nSRAM cells are analogue at power-up.\nA few % of bits are marginal and\nresolve randomly. Voting over many\nboots finds the bits you can trust.", fontsize=9];
+  note2 [shape=note, style="filled", fillcolor="#FFF8E1", color="#D6C68A",
+         label="Why not store K?\nFlash can be dumped. Storing only\nH + MASK means a firmware dump\ngives the attacker nothing usable.", fontsize=9];
+
+  note1 -> stable [style=dotted, arrowhead=none, color="#D6C68A"];
+  note2 -> helper [style=dotted, arrowhead=none, color="#D6C68A"];
+  { rank=same; stable; note1; }
+  { rank=same; helper; note2; }
+}

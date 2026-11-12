@@ -1,0 +1,41 @@
+digraph arch {
+  rankdir=TB;
+  newrank=true;
+  graph [fontname="Helvetica", bgcolor="white", pad=0.25, nodesep=0.45, ranksep=0.55, compound=true];
+  node  [fontname="Helvetica", fontsize=10, shape=box, style="rounded,filled",
+         fillcolor="#E8EEF4", color="#1B3A57", penwidth=1.2, margin="0.14,0.08"];
+  edge  [color="#5A6B7C", penwidth=1.1, arrowsize=0.65, fontsize=9];
+
+  subgraph cluster_drone {
+    label="  DRONE NODE  ·  ESP32  "; labeljust=l;
+    fontname="Helvetica-Bold"; fontsize=10; color="#1B3A57"; style="rounded"; bgcolor="#F7FAFC";
+
+    sram  [label="SRAM PUF region\n(noinit, read at boot)", fillcolor="#FFF1D6"];
+    vote  [label="Majority vote\n+ dark-bit mask"];
+    bch   [label="BCH decode\nP′ ⊕ H → K"];
+    nvs   [label="NVS flash\nhelper data H + mask", shape=cylinder, fillcolor="#E3EFE3", height=0.7];
+    hmac  [label="HMAC-SHA256\n(mbedTLS)"];
+    radio [label="Wi-Fi / MQTT\nclient", fillcolor="#DDE9F5"];
+  }
+
+  subgraph cluster_gs {
+    label="  GROUND STATION  ·  FLASK BACKEND  "; labeljust=l;
+    fontname="Helvetica-Bold"; fontsize=10; color="#1B3A57"; style="rounded"; bgcolor="#F7FAFC";
+
+    api   [label="Auth API\n/challenge  /verify", fillcolor="#DDE9F5"];
+    nonce [label="Nonce store\n(TTL 60 s)", shape=cylinder, fillcolor="#E3EFE3", height=0.7];
+    db    [label="Device registry\ndevice_id → mask, H, K", shape=cylinder, fillcolor="#E3EFE3", height=0.75];
+    dash  [label="Tactical dashboard\nauth status · telemetry · log", fillcolor="#FFF1D6"];
+  }
+
+  { rank=same; sram; vote; bch; hmac; radio; }
+  { rank=same; api; nonce; db; dash; }
+
+  sram  -> vote  [label=" raw bits", constraint=false];
+  vote  -> bch   [constraint=false];
+  bch   -> hmac  [label=" K", constraint=false];
+  hmac  -> radio [label=" response", constraint=false];
+  nvs   -> bch   [label=" H, mask", style=dashed];
+
+  radio -> api   [label="1 HELLO(device_id)\n2 nonce   3 HMAC response\n4 session token"];
+}

@@ -1,0 +1,60 @@
+digraph auth {
+  rankdir=TB;
+  graph [fontname="Helvetica", bgcolor="white", pad=0.25, nodesep=0.40, ranksep=0.30];
+  node  [fontname="Helvetica", fontsize=10, shape=box, style="rounded,filled",
+         fillcolor="#E8EEF4", color="#1B3A57", penwidth=1.2, margin="0.16,0.08"];
+  edge  [color="#5A6B7C", penwidth=1.1, arrowsize=0.65];
+
+  boot  [label="POWER ON / BOOT", shape=ellipse, fillcolor="#1B3A57",
+         fontcolor="white", fontname="Helvetica-Bold"];
+
+  puf   [label="Read SRAM pattern P′\n(same noinit region, before init)"];
+
+  raw   [label="Apply MASK  →  P′_selected"];
+
+  xor   [label="C′ = P′_selected  ⊕  H\n= C  ⊕  (P′ ⊕ P)  =  C  ⊕  e",
+         fillcolor="#FFF1D6"];
+
+  dec   [label="BCH decode C′\ncorrects up to t errors", fillcolor="#FFF1D6"];
+
+  ok    [label="Decode OK?", shape=diamond, fillcolor="#FFF4E0", height=0.85, width=1.5];
+
+  fail  [label="KEY RECONSTRUCTION FAILED\naged / damaged / wrong chip\n→ refuse to fly, log event",
+         fillcolor="#FBE4E4", color="#B03A3A"];
+
+  conn  [label="Join Wi-Fi · open MQTT/TLS link"];
+
+  hello [label="1 · HELLO { device_id }", fillcolor="#DDE9F5"];
+
+  nonce [label="2 · Server → random nonce N\n(32 B, single use, 60 s TTL)", fillcolor="#DDE9F5"];
+
+  resp  [label="3 · R = HMAC-SHA256(K, device_id ‖ N ‖ ts)\nDrone → Server", fillcolor="#DDE9F5"];
+
+  check [label="Server recomputes R with stored K\nconstant-time compare", fillcolor="#DDE9F5"];
+
+  good  [label="match?", shape=diamond, fillcolor="#FFF4E0", height=0.85, width=1.4];
+
+  token [label="4 · Session token (JWT, 15 min)\nSession key = HKDF(K, N)\nTelemetry encrypted + signed",
+         fillcolor="#E3EFE3"];
+
+  bad   [label="REJECT\nincrement failure counter\nlock device_id after 5 tries",
+         fillcolor="#FBE4E4", color="#B03A3A"];
+
+  fly   [label="AUTHENTICATED\nUAV cleared for flight", shape=ellipse,
+         fillcolor="#1B3A57", fontcolor="white", fontname="Helvetica-Bold"];
+
+  boot -> puf -> raw -> xor -> dec -> ok;
+  ok -> fail [label="  no"];
+  ok -> conn [label="  yes (e ≤ t)"];
+  conn -> hello -> nonce -> resp -> check -> good;
+  good -> token [label="  yes"];
+  good -> bad   [label="  no"];
+  token -> fly;
+
+  note [shape=note, style="filled", fillcolor="#FFF8E1", color="#D6C68A", fontsize=9,
+        label="K never crosses the link.\nA captured HELLO/nonce/R trio is\nuseless: N is single-use, so a\nreplay fails at step 3."];
+  note -> resp [style=dotted, arrowhead=none, color="#D6C68A"];
+
+  { rank=same; fail; conn; }
+  { rank=same; resp; note; }
+}

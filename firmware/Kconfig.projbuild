@@ -1,0 +1,18 @@
+menu "PUF Drone Config"
+    config DRONE_DEVICE_ID
+        string "Device ID"
+        default "DRONE-001"
+    config DRONE_SERVER_URL
+        string "Auth server base URL"
+        default "http://192.168.1.100:5000"
+    config DRONE_WIFI_SSID
+        string "WiFi SSID"
+        default "GCS_NET"
+    config DRONE_WIFI_PASSWORD
+        string "WiFi password"
+        default "changeme"
+        depends on !DRONE_WIFI_OPEN
+    config DRONE_WIFI_OPEN
+        bool "Open WiFi (no password)"
+        default n
+endmenu
