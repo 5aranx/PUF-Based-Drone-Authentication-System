@@ -23,9 +23,9 @@
 
 ## 📌 Executive Summary
 
-Conventional UAV defense architectures anchor root-of-trust identity to static private keys persisted in non-volatile flash memory (SPI NOR / EEPROM). In contested environments, captured airframes can be rapidly compromised via non-invasive UART/JTAG memory dumping, side-channel probing, or chip-off desoldering—allowing adversary operators to clone legitimate aircraft identities into rogue aerial platforms.
+Conventional UAV architectures anchor root-of-trust identity to static private keys stored in non-volatile flash memory (SPI NOR / EEPROM). In contested environments, captured airframes risk rapid extraction through UART/JTAG dumping, side-channel analysis, or chip-off desoldering—enabling adversaries to clone legitimate aircraft identities onto rogue airframes.
 
-This system replaces static stored secrets with a **Physically Unclonable Function (PUF)** derived directly from deep-submicron process variations in uninitialized silicon. By coupling hardware SRAM power-up states with a **Code-Offset Fuzzy Extractor** ($\text{BCH}(255,131,t=18)$ over $\text{GF}(2^8)$), a transient 128-bit key $K$ is reconstituted strictly in volatile memory during boot, used for zero-knowledge mutual challenge-response authentication, and immediately zeroised. **A complete firmware dump yields only non-confidential public helper data ($H$) and stability masks.**
+This system replaces static stored keys with an **SRAM Physically Unclonable Function (PUF)** derived directly from deep-submicron process variations in uninitialized silicon. By coupling hardware SRAM power-up states with a **Code-Offset Fuzzy Extractor** (`BCH(255, 131, t=18)` over **GF(2<sup>8</sup>)**), an ephemeral 128-bit key `K` is reconstituted strictly in volatile memory during boot, used for zero-knowledge mutual challenge-response authentication, and immediately zeroised. **A complete firmware dump yields only non-confidential public helper data (`H`) and stability masks.**
 
 ---
 
